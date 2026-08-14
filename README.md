@@ -1,4 +1,4 @@
-# forge-template
+# ollama-usage
 
 > **Fynes Forge** · Official repository template. Replace this line with a one-sentence description of what this repo does.
 
@@ -16,8 +16,18 @@
 
 ## Overview
 
-<!-- Replace this section with a clear description of the project.
-     Answer: what does it do, who is it for, and why does it exist? -->
+<!-- 
+Log, budget, and visualise token usage for local Ollama models.
+
+Ollama's API already returns prompt/output token counts and timings on
+every response — this project makes sure that data lands somewhere
+instead of vanishing after each request, warns you before it collides
+with your context window, and gives you a network-reachable dashboard
+to actually look at it.
+
+Companion code for [fynesforge.dev/blog](https://fynesforge.dev/blog) —
+see the post for the full write-up.
+ -->
 
 This is a Fynes Forge project built with **precision over cleverness**.
 
@@ -25,24 +35,66 @@ This is a Fynes Forge project built with **precision over cleverness**.
 
 ## Getting Started
 
-See [GETTING_STARTED.md](./docs/GETTING_STARTED.md) for full setup instructions.
+```bash
+git clone https://github.com/fynes-forge/ollama-usage.git
+cd ollama-usage
+uv sync
+```
 
-**Quick start:**
+That's it — `uv` resolves every dependency from `pyproject.toml`, no
+manual pip installs, no virtualenv to remember to activate.
+
+## Use
+
+**Log a call and check it against your context budget:**
 
 ```bash
-# Clone the repo
-git clone https://github.com/fynes-forge/<repo-name>.git
-cd <repo-name>
+uv run ollama-usage log \
+  --model qwen2.5-coder-agent \
+  --prompt "Summarise breaking changes in go_router 14 to 17." \
+  --tag dependabot-review
+```
 
-# Install dependencies
-pip install -r requirements.txt   # Python
-# or
-npm install                        # Node / TypeScript
+Every call appends one line to `~/ollama-usage.jsonl`. If the prompt is
+eating into your model's context window, you'll see a warning before
+Ollama silently starts dropping tokens:
 
-# Run
-python src/main.py
-# or
-npm start
+```
+⚠️  Context at 91% of budget (29820/32768 tokens)
+```
+
+Adjust `--num-ctx` to match whatever `num_ctx` your Modelfile sets.
+
+**Launch the dashboard:**
+
+```bash
+uv run ollama-usage dashboard
+```
+
+Starts a Streamlit app bound to `0.0.0.0:8501` by default — reachable
+from any device on your network, not just the machine running it. Pass
+`--host 127.0.0.1` to keep it local-only, or `--port` to change the port.
+
+The dashboard shows total requests, total tokens, average tokens/sec,
+a breakdown by tag, tokens/sec over time, and requests per day.
+
+**Or work from the terminal instead:**
+
+```bash
+uv run ollama-usage report   # per-tag summary table
+uv run ollama-usage plot     # tokens/sec over time, matplotlib window
+```
+
+---
+
+## Use it as a library
+
+```python
+from ollama_usage.logger import call_and_log
+from ollama_usage.budget import check_context_budget
+
+resp = call_and_log(model="qwen2.5-coder-agent", prompt=my_prompt, tag="my-task")
+check_context_budget(resp["prompt_eval_count"], num_ctx=32768)
 ```
 
 ---
@@ -51,7 +103,6 @@ npm start
 
 | Document | Description |
 |---|---|
-| [GETTING_STARTED.md](./docs/GETTING_STARTED.md) | Installation, setup, and first run |
 | [CONTRIBUTING.md](./CONTRIBUTING.md) | How to contribute to this project |
 | [CHANGELOG.md](./CHANGELOG.md) | Version history and release notes |
 | [AGENTS.md](./AGENTS.md) | AI agent context and conventions |
@@ -68,7 +119,12 @@ npm start
 │   ├── PULL_REQUEST_TEMPLATE/
 │   └── copilot/            ← GitHub Copilot instructions
 ├── docs/                   ← Documentation
-├── src/                    ← Source code
+src/ollama_usage/
+     ├── logger.py      # call_and_log() — call Ollama, append usage to JSONL
+     ├── budget.py       # check_context_budget() — warn before context overflow
+     ├── report.py       # summary() and plot() — query the log with DuckDB
+     ├── dashboard.py     # Streamlit dashboard
+     └── cli.py           # `ollama-usage log|report|plot|dashboard`
 ├── tests/                  ← Test suite
 ├── AGENTS.md               ← AI agent conventions
 ├── CONTRIBUTING.md         ← Contribution guide
