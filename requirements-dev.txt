@@ -13,4 +13,4 @@ pytest-cov>=5.0.0
 pytest-mock>=3.14.0
 
 # Environment
-python-dotenv>=1.0.0
+python-dotenv>=1.2.2
