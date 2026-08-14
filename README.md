@@ -1,6 +1,6 @@
 # ollama-usage
 
-> **Fynes Forge** · Official repository template. Replace this line with a one-sentence description of what this repo does.
+> **ollama-usage** · Log, budget, and visualise token usage for local Ollama models.
 
 ---
 
@@ -16,9 +16,6 @@
 
 ## Overview
 
-<!-- 
-Log, budget, and visualise token usage for local Ollama models.
-
 Ollama's API already returns prompt/output token counts and timings on
 every response — this project makes sure that data lands somewhere
 instead of vanishing after each request, warns you before it collides
@@ -27,7 +24,7 @@ to actually look at it.
 
 Companion code for [fynesforge.dev/blog](https://fynesforge.dev/blog) —
 see the post for the full write-up.
- -->
+
 
 This is a Fynes Forge project built with **precision over cleverness**.
 
