@@ -35,14 +35,27 @@ This is a Fynes Forge project built with **precision over cleverness**.
 
 ## Getting Started
 
+**Clone and run:**
+ 
 ```bash
 git clone https://github.com/fynes-forge/ollama-usage.git
 cd ollama-usage
 uv sync
 ```
-
-That's it — `uv` resolves every dependency from `pyproject.toml`, no
-manual pip installs, no virtualenv to remember to activate.
+ 
+**Or install a released version directly, no clone needed** — every
+[release](https://github.com/fynes-forge/ollama-usage/releases) has a
+wheel attached:
+ 
+```bash
+uv tool install ollama-usage --from https://github.com/fynes-forge/ollama-usage/releases/download/v0.1.0/ollama_usage-0.1.0-py3-none-any.whl
+```
+ 
+`uv tool install` puts the `ollama-usage` command on your PATH in its
+own isolated environment — no virtualenv to manage, and it doesn't
+touch any other project's dependencies. Swap `uv tool install` for
+`pip install` if you'd rather it land in your current environment.
+Check the release's `SHA256SUMS.txt` if you want to verify the download.
 
 ## Use
 
@@ -64,6 +77,32 @@ Ollama silently starts dropping tokens:
 ```
 
 Adjust `--num-ctx` to match whatever `num_ctx` your Modelfile sets.
+
+**Tracking Cline (or any client that talks to Ollama directly):**
+
+`ollama-usage log` only logs calls it makes itself. Cline talks to
+Ollama's API on its own — it never goes through this tool — so nothing
+above captures it. Fix that with the proxy:
+
+```bash
+uv run ollama-usage proxy
+```
+
+This starts a transparent proxy on `:11435` that forwards every request
+to your real Ollama server and logs the token usage on the way through,
+without changing the response. Point Cline's **Ollama Base URL** setting
+at `http://localhost:11435` instead of `http://localhost:11434`, and its
+traffic gets logged like everything else.
+
+Two things worth knowing before you rely on this:
+
+- Every request through one proxy instance shares one `--tag` (`cline`
+  by default), since the proxy has no way to know what task Cline is
+  actually working on. If you want that level of granularity, restart
+  the proxy with a different `--tag` per work session.
+- Only traffic that's actually routed through the proxy gets logged.
+  Anything still pointed at `:11434` directly — Jan, a `curl` command,
+  another tool — stays invisible to this log.
 
 **Launch the dashboard:**
 
@@ -120,11 +159,12 @@ check_context_budget(resp["prompt_eval_count"], num_ctx=32768)
 │   └── copilot/            ← GitHub Copilot instructions
 ├── docs/                   ← Documentation
 src/ollama_usage/
-     ├── logger.py      # call_and_log() — call Ollama, append usage to JSONL
-     ├── budget.py       # check_context_budget() — warn before context overflow
-     ├── report.py       # summary() and plot() — query the log with DuckDB
-     ├── dashboard.py     # Streamlit dashboard
-     └── cli.py           # `ollama-usage log|report|plot|dashboard`
+    ├── logger.py      # call_and_log(), build_entry(), append_entry()
+    ├── budget.py      # check_context_budget() — warn before context overflow
+    ├── proxy.py       # transparent proxy — captures Cline/other direct clients
+    ├── report.py      # summary() and plot() — query the log with DuckDB
+    ├── dashboard.py   # Streamlit dashboard
+    └── cli.py         # `ollama-usage log|report|plot|dashboard|proxy`
 ├── tests/                  ← Test suite
 ├── AGENTS.md               ← AI agent conventions
 ├── CONTRIBUTING.md         ← Contribution guide

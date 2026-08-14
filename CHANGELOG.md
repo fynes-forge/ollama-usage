@@ -7,33 +7,16 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+
 ## [Unreleased]
 
+## [0.1.0] - 2026-08-14
+
 ### Added
-- Initial repository setup from `forge-template`
+
+- `ollama-usage log` — call Ollama, log token usage to a JSONL file, and warn if the prompt is close to the model's context limit.
+- `ollama-usage report` / `ollama-usage plot` — DuckDB-backed usage summary and a tokens/sec-over-time chart.
+- `ollama-usage dashboard` — Streamlit dashboard bindable to the local network, showing totals, per-tag breakdown, and usage over time.
+- `ollama-usage proxy` — transparent reverse proxy that captures usage from clients (e.g. Cline) that talk to Ollama directly rather than through this tool.
 
 ---
-
-<!-- 
-CHANGELOG ENTRY FORMAT
-
-## [X.Y.Z] - YYYY-MM-DD
-
-### Added
-- New features
-
-### Changed
-- Changes to existing functionality
-
-### Deprecated
-- Features that will be removed in a future release
-
-### Removed
-- Removed features
-
-### Fixed
-- Bug fixes
-
-### Security
-- Vulnerability fixes
--->
