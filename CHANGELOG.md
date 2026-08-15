@@ -20,3 +20,21 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - `ollama-usage proxy` — transparent reverse proxy that captures usage from clients (e.g. Cline) that talk to Ollama directly rather than through this tool.
 
 ---
+
+### Changed
+
+- `__version__` is now read from installed package metadata instead of being hardcoded, so it can't drift from `pyproject.toml`.
+
+---
+
+## [0.1.0] - 2026-08-14
+
+### Added
+
+- `ollama-usage log` — call Ollama, log token usage to a JSONL file, and warn if the prompt is close to the model's context limit.
+- `ollama-usage report` / `ollama-usage plot` — DuckDB-backed usage summary and a tokens/sec-over-time chart.
+- `ollama-usage dashboard` — Streamlit dashboard bindable to the local network, showing totals, per-tag breakdown, and usage over time.
+- `ollama-usage proxy` — transparent reverse proxy that captures usage from clients (e.g. Cline) that talk to Ollama directly rather than through this tool.
+
+
+---

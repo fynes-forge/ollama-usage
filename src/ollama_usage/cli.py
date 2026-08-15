@@ -4,21 +4,34 @@ from __future__ import annotations
 
 import subprocess
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Optional
 
 import typer
+from rich.console import Console
 
+from ollama_usage import __version__
+from ollama_usage.branding import CYAN, GOLD, LAVENDER
 from ollama_usage.budget import DEFAULT_NUM_CTX, DEFAULT_WARN_THRESHOLD, check_context_budget
 from ollama_usage.logger import DEFAULT_LOG_PATH, DEFAULT_OLLAMA_URL, call_and_log
 from ollama_usage.proxy import DEFAULT_TARGET, run_proxy
 from ollama_usage.report import plot as plot_usage
 from ollama_usage.report import summary as summary_report
 
+console = Console()
+
 app = typer.Typer(
     name="ollama-usage",
     help="Log, budget, and visualise token usage for local Ollama models.",
+    epilog="A Fynes Forge tool — fynesforge.dev",
     no_args_is_help=True,
 )
+
+
+def _version_callback(show: bool) -> None:
+    if show:
+        console.print(
+            f"[bold {GOLD}]ollama-usage[/] v{__version__} — a [{LAVENDER}]Fynes Forge[/] tool")
+        raise typer.Exit()
 
 
 @app.callback()
@@ -26,8 +39,18 @@ def main(
     ctx: typer.Context,
     log_path: Annotated[
         Path,
-        typer.Option(help="Path to the JSONL usage log, shared by every command."),
+        typer.Option(
+            help="Path to the JSONL usage log, shared by every command."),
     ] = DEFAULT_LOG_PATH,
+    version: Annotated[
+        Optional[bool],
+        typer.Option(
+            "--version",
+            callback=_version_callback,
+            is_eager=True,
+            help="Show the version and exit.",
+        ),
+    ] = None,
 ) -> None:
     ctx.obj = {"log_path": log_path.expanduser()}
 
@@ -38,12 +61,15 @@ def log(
     model: Annotated[str, typer.Option(help="Ollama model tag to call.")],
     prompt: Annotated[str, typer.Option(help="Prompt to send.")],
     tag: Annotated[
-        str, typer.Option(help="Label for this task, used later to group usage.")
+        str, typer.Option(
+            help="Label for this task, used later to group usage.")
     ] = "untagged",
     num_ctx: Annotated[
-        int, typer.Option(help="Context window size to check the prompt against.")
+        int, typer.Option(
+            help="Context window size to check the prompt against.")
     ] = DEFAULT_NUM_CTX,
-    ollama_url: Annotated[str, typer.Option(help="Ollama generate endpoint.")] = DEFAULT_OLLAMA_URL,
+    ollama_url: Annotated[str, typer.Option(
+        help="Ollama generate endpoint.")] = DEFAULT_OLLAMA_URL,
 ) -> None:
     """Call Ollama, log the token usage, and warn if the context budget is tight."""
     log_path = ctx.obj["log_path"]
@@ -78,7 +104,8 @@ def plot(ctx: typer.Context) -> None:
 def proxy(
     ctx: typer.Context,
     target: Annotated[
-        str, typer.Option(help="The real Ollama server to forward requests to.")
+        str, typer.Option(
+            help="The real Ollama server to forward requests to.")
     ] = DEFAULT_TARGET,
     tag: Annotated[
         str,
@@ -88,7 +115,8 @@ def proxy(
             "everything routed through one proxy instance shares one tag."
         ),
     ] = "cline",
-    host: Annotated[str, typer.Option(help="Bind address for the proxy itself.")] = "0.0.0.0",
+    host: Annotated[str, typer.Option(
+        help="Bind address for the proxy itself.")] = "0.0.0.0",
     port: Annotated[
         int,
         typer.Option(
@@ -100,11 +128,14 @@ def proxy(
     """Run a transparent proxy in front of Ollama — this is what actually
     captures traffic from Cline or any other client that talks to Ollama
     directly, since they never call ollama-usage's `log` command."""
-    typer.echo(
-        f"Proxying http://{host}:{port} -> {target}\n"
-        f"Point Cline's Ollama Base URL at http://localhost:{port} to capture its traffic."
+    console.print(
+        f"[{CYAN}]›[/] Proxying [bold]http://{host}:{port}[/] → {target}")
+    console.print(
+        f"[{CYAN}]›[/] Point Cline's Ollama Base URL at "
+        f"[bold {GOLD}]http://localhost:{port}[/] to capture its traffic."
     )
-    run_proxy(target=target, log_path=ctx.obj["log_path"], tag=tag, host=host, port=port)
+    run_proxy(target=target,
+              log_path=ctx.obj["log_path"], tag=tag, host=host, port=port)
 
 
 @app.command()
@@ -116,14 +147,15 @@ def dashboard(
             "use 127.0.0.1 to keep it local-only."
         ),
     ] = "0.0.0.0",
-    port: Annotated[int, typer.Option(help="Port to serve the dashboard on.")] = 8501,
+    port: Annotated[int, typer.Option(
+        help="Port to serve the dashboard on.")] = 8501,
 ) -> None:
     """Launch the Streamlit dashboard."""
     dashboard_path = Path(__file__).parent / "dashboard.py"
-    typer.echo(
-        f"Starting dashboard on http://{host}:{port} "
-        f"(use your machine's LAN IP instead of {host} from other devices)"
-    )
+    console.print(
+        f"[{CYAN}]›[/] Starting dashboard on [bold]http://{host}:{port}[/]")
+    console.print(
+        f"[{CYAN}]›[/] Use your machine's LAN IP instead of {host} from other devices.")
     subprocess.run(
         [
             "streamlit",
