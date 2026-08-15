@@ -19,6 +19,8 @@ dependencies = [
     "streamlit>=1.35",
     "typer>=0.12",
     "flask>=3.0",
+    "plotly>=5.20",
+    "rich>=13.7",
 ]
 
 [dependency-groups]
@@ -29,12 +31,13 @@ dev = [
     "pytest-cov>=5.0",
 ]
 
+
 [project.urls]
 Homepage = "https://fynes-forge.github.io"
 Repository = "https://github.com/fynes-forge/ollama_usage"
 Issues = "https://github.com/fynes-forge/ollama_usage/issues"
+Blog = "https://fynesforge.dev/blog"
 
 
 [project.scripts]
 ollama-usage = "ollama_usage.cli:app"
-

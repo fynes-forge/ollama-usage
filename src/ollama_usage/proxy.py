@@ -1,21 +1,15 @@
 """A transparent reverse proxy that sits in front of Ollama.
 
-This exists because tools like Cline talk to Ollama's API directly —
-they never go through call_and_log(). The only way to capture that
-traffic without modifying Cline is to sit between it and Ollama, so
-every request passes through this proxy on its way to the real server.
-
-Point the client (Cline's "Ollama Base URL" setting, for example) at
-this proxy's address instead of Ollama's. Every response is streamed
-back to the client unmodified; usage is logged on the side once each
-request completes.
+Captures traffic from native Ollama endpoints (/api/*) and OpenAI-compatible
+endpoints (/v1/*) streaming and non-streaming requests.
 """
 
 from __future__ import annotations
 
 import json
+import logging
 from pathlib import Path
-from typing import Any
+from typing import Any, Generator
 
 import requests
 from flask import Flask, Response, request
@@ -24,8 +18,6 @@ from ollama_usage.logger import DEFAULT_LOG_PATH, append_entry, build_entry
 
 DEFAULT_TARGET = "http://localhost:11434"
 
-# Response headers that must not be copied straight through — the proxy's
-# own response has different framing (chunked, no upstream content-length).
 _HOP_BY_HOP_HEADERS = {
     "content-length",
     "transfer-encoding",
@@ -33,35 +25,119 @@ _HOP_BY_HOP_HEADERS = {
     "content-encoding",
 }
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("ollama_proxy")
 
-def create_app(target: str = DEFAULT_TARGET, log_path: Path = DEFAULT_LOG_PATH, tag: str = "cline") -> Flask:
+
+def _normalize_openai_chunk(chunk: dict[str, Any]) -> dict[str, Any] | None:
+    """Converts OpenAI-style completion/chunk usage stats into Ollama-compatible format."""
+    usage = chunk.get("usage")
+    if not usage:
+        return None
+
+    return {
+        "model": chunk.get("model", "unknown"),
+        "done": True,
+        "prompt_eval_count": usage.get("prompt_tokens", 0),
+        "eval_count": usage.get("completion_tokens", 0),
+        "total_duration": chunk.get("total_duration", 0),
+        "eval_duration": chunk.get("eval_duration", 0),
+    }
+
+
+def create_app(
+    target: str = DEFAULT_TARGET,
+    log_path: Path = DEFAULT_LOG_PATH,
+    tag: str = "cline",
+) -> Flask:
     app = Flask(__name__)
+
+    # Ensure log destination parent folder exists
+    log_path = Path(log_path).expanduser().resolve()
+    log_path.parent.mkdir(parents=True, exist_ok=True)
 
     @app.route("/", defaults={"path": ""}, methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
     @app.route("/<path:path>", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
     def proxy(path: str) -> Response:
-        upstream = requests.request(
-            method=request.method,
-            url=f"{target}/{path}",
-            headers={k: v for k, v in request.headers if k.lower() != "host"},
-            data=request.get_data(),
-            params=request.args,
-            stream=True,
-            timeout=600,
-        )
+        logger.info(f"Incoming request: {request.method} /{path}")
 
-        def relay() -> Any:
-            for line in upstream.iter_lines():
-                if not line:
-                    continue
-                yield line + b"\n"
-                try:
-                    chunk = json.loads(line)
-                except json.JSONDecodeError:
-                    continue
-                if chunk.get("done"):
-                    entry = build_entry(chunk, tag=tag)
-                    append_entry(entry, log_path)
+        try:
+            upstream = requests.request(
+                method=request.method,
+                url=f"{target}/{path}",
+                headers={k: v for k, v in request.headers if k.lower()
+                         != "host"},
+                data=request.get_data(),
+                params=request.args,
+                stream=True,
+                timeout=600,
+            )
+        except Exception as err:
+            logger.error(
+                f"Failed to connect to target Ollama server ({target}): {err}")
+            return Response(f"Proxy upstream error: {err}", status=502)
+
+        def relay() -> Generator[bytes, None, None]:
+            accumulated_body = []
+
+            try:
+                for line in upstream.iter_lines():
+                    if not line:
+                        continue
+
+                    yield line + b"\n"
+                    accumulated_body.append(line)
+
+                    clean_line = line.decode("utf-8", errors="ignore").strip()
+                    if clean_line.startswith("data: "):
+                        clean_line = clean_line[6:].strip()
+
+                    if clean_line == "[DONE]":
+                        continue
+
+                    try:
+                        chunk = json.loads(clean_line)
+                    except json.JSONDecodeError:
+                        continue
+
+                    # Native Ollama endpoint check
+                    if isinstance(chunk, dict) and chunk.get("done") is True:
+                        _log_safely(chunk)
+
+                    # OpenAI-compatible /v1/ endpoint check
+                    elif isinstance(chunk, dict) and "usage" in chunk:
+                        normalized = _normalize_openai_chunk(chunk)
+                        if normalized:
+                            _log_safely(normalized)
+
+                # Fallback for non-streaming requests
+                if accumulated_body and not upstream.headers.get("content-type", "").startswith("text/event-stream"):
+                    try:
+                        full_payload = json.loads(b"".join(accumulated_body))
+                        if isinstance(full_payload, dict):
+                            if full_payload.get("done") is True:
+                                _log_safely(full_payload)
+                            elif "usage" in full_payload:
+                                normalized = _normalize_openai_chunk(
+                                    full_payload)
+                                if normalized:
+                                    _log_safely(normalized)
+                    except json.JSONDecodeError:
+                        pass
+
+            except Exception as stream_err:
+                logger.error(
+                    f"Error during response relay stream: {stream_err}")
+
+        def _log_safely(payload: dict[str, Any]) -> None:
+            try:
+                entry = build_entry(payload, tag=tag)
+                append_entry(entry, log_path)
+                logger.info(
+                    f"Successfully appended entry to JSONL: {log_path}")
+            except Exception as log_err:
+                logger.error(
+                    f"Failed to append entry to {log_path}: {log_err}", exc_info=True)
 
         headers = [
             (k, v) for k, v in upstream.headers.items()
@@ -81,3 +157,7 @@ def run_proxy(
 ) -> None:
     app = create_app(target=target, log_path=log_path, tag=tag)
     app.run(host=host, port=port, threaded=True)
+
+
+if __name__ == "__main__":
+    run_proxy()
