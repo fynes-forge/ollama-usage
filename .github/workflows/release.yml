@@ -15,7 +15,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 0
 
@@ -27,27 +27,72 @@ jobs:
 
       - name: Verify pyproject.toml version matches the tag
         run: |
-          PYPROJECT_VERSION=$(grep -m1 '^version' pyproject.toml | cut -d'"' -f2)
+          PYPROJECT_VERSION=$(python3 -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['version'])")
           TAG_VERSION="${{ steps.version.outputs.PKG_VERSION }}"
           if [ "$PYPROJECT_VERSION" != "$TAG_VERSION" ]; then
             echo "::error::pyproject.toml version ($PYPROJECT_VERSION) does not match tag ($TAG_VERSION) — bump pyproject.toml before tagging."
             exit 1
           fi
 
-      - name: Extract changelog entry
+      - name: Categorize Conventional Commits
         id: changelog
         run: |
-          VERSION="${{ steps.version.outputs.VERSION }}"
-          # Extract the section for this version from CHANGELOG.md
-          NOTES=$(awk "/^## \[${VERSION#v}\]/{flag=1; next} /^## \[/{flag=0} flag" CHANGELOG.md)
+          # Get previous tag or default to first commit if this is the first release
+          PREV_TAG=$(git describe --tags --abbrev=0 ${{ github.ref_name }}^ 2>/dev/null || git rev-list --max-parents=0 HEAD)
+          
+          # Extract commit subjects between previous tag and current tag
+          COMMITS=$(git log "${PREV_TAG}..${{ github.ref_name }}" --format="%s")
+
+          # Temporary buffers for each category
+          FEAT=""
+          FIX=""
+          DOCS=""
+          REFACTOR=""
+          PERF=""
+          CHORE=""
+          UNCATEGORIZED=""
+
+          while IFS= read -r msg; do
+            [ -z "$msg" ] && continue
+            case "$msg" in
+              feat*|Feat*) FEAT="${FEAT}- ${msg}\n" ;;
+              fix*|Fix*) FIX="${FIX}- ${msg}\n" ;;
+              docs*|Docs*) DOCS="${DOCS}- ${msg}\n" ;;
+              refactor*|Refactor*) REFACTOR="${REFACTOR}- ${msg}\n" ;;
+              perf*|Perf*) PERF="${PERF}- ${msg}\n" ;;
+              chore*|Chore*) CHORE="${CHORE}- ${msg}\n" ;;
+              *) UNCATEGORIZED="${UNCATEGORIZED}- ${msg}\n" ;;
+            esac
+          done <<< "$COMMITS"
+
+          # Build final release notes output
+          NOTES=""
+          
+          # Check for CHANGELOG.md entry first as primary note if it exists
+          VERSION_NUM="${{ steps.version.outputs.PKG_VERSION }}"
+          if [ -f CHANGELOG.md ]; then
+            CL_ENTRY=$(awk "/^## \[${VERSION_NUM}\]/{flag=1; next} /^## \[/{flag=0} flag" CHANGELOG.md)
+            if [ -n "$CL_ENTRY" ]; then
+              NOTES="${CL_ENTRY}\n\n### Commit History\n"
+            fi
+          fi
+
+          [ -n "$FEAT" ] && NOTES="${NOTES}#### 🚀 Features\n${FEAT}\n"
+          [ -n "$FIX" ] && NOTES="${NOTES}#### 🐛 Bug Fixes\n${FIX}\n"
+          [ -n "$PERF" ] && NOTES="${NOTES}#### ⚡ Performance Improvements\n${PERF}\n"
+          [ -n "$REFACTOR" ] && NOTES="${NOTES}#### ♻️ Refactoring\n${REFACTOR}\n"
+          [ -n "$DOCS" ] && NOTES="${NOTES}#### 📚 Documentation\n${DOCS}\n"
+          [ -n "$CHORE" ] && NOTES="${NOTES}#### 🔧 Chores & Maintenance\n${CHORE}\n"
+          [ -n "$UNCATEGORIZED" ] && NOTES="${NOTES}#### ❓ Uncategorized Changes\n${UNCATEGORIZED}\n"
+
           {
             echo "NOTES<<EOF"
-            echo "$NOTES"
+            printf '%b' "$NOTES"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v10
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v5.1.0
         with:
           enable-cache: true
           python-version: "3.12"
@@ -61,7 +106,7 @@ jobs:
           sha256sum * > SHA256SUMS.txt
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v3
+        uses: softprops/action-gh-release@c95fe1489396fe8a9eb87c0abf8aa5b2ef267dfe # v2.2.1
         with:
           tag_name: ${{ steps.version.outputs.VERSION }}
           name: ${{ steps.version.outputs.VERSION }}
@@ -72,12 +117,12 @@ jobs:
 
             **Install this release directly — no clone needed:**
             ```bash
-            pip install https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.VERSION }}/ollama_usage-${{ steps.version.outputs.PKG_VERSION }}-py3-none-any.whl
+            pip install [https://github.com/$](https://github.com/$){{ github.repository }}/releases/download/${{ steps.version.outputs.VERSION }}/ollama_usage-${{ steps.version.outputs.PKG_VERSION }}-py3-none-any.whl
             ```
 
             Or with `uv`, isolated in its own environment:
             ```bash
-            uv tool install ollama-usage --from https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.VERSION }}/ollama_usage-${{ steps.version.outputs.PKG_VERSION }}-py3-none-any.whl
+            uv tool install ollama-usage --from [https://github.com/$](https://github.com/$){{ github.repository }}/releases/download/${{ steps.version.outputs.VERSION }}/ollama_usage-${{ steps.version.outputs.PKG_VERSION }}-py3-none-any.whl
             ```
 
             Checksums for all assets are in `SHA256SUMS.txt` below.

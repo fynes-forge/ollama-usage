@@ -12,25 +12,24 @@ authors = [
 ]
 requires-python = ">=3.12"
 dependencies = [
-    "requests>=2.31",
     "duckdb>=1.0",
+    "flask>=3.0",
     "matplotlib>=3.8",
     "pandas>=2.0",
+    "plotly>=5.20",
+    "requests>=2.31",
+    "rich>=13.7",
     "streamlit>=1.35",
     "typer>=0.12",
-    "flask>=3.0",
-    "plotly>=5.20",
-    "rich>=13.7",
 ]
 
 [dependency-groups]
 dev = [
-    "ruff>=0.6",
     "mypy>=1.10",
     "pytest>=8.0",
     "pytest-cov>=5.0",
+    "ruff>=0.6",
 ]
-
 
 [project.urls]
 Homepage = "https://fynes-forge.github.io"
@@ -38,6 +37,49 @@ Repository = "https://github.com/fynes-forge/ollama_usage"
 Issues = "https://github.com/fynes-forge/ollama_usage/issues"
 Blog = "https://fynesforge.dev/blog"
 
-
 [project.scripts]
 ollama-usage = "ollama_usage.cli:app"
+
+
+[tool.ruff]
+target-version = "py312"
+line-length = 88
+
+[tool.ruff.lint]
+select = [
+  "E",      # pycodestyle errors
+  "W",      # pycodestyle warnings
+  "F",      # Pyflakes
+  "I",      # isort (import sorting)
+  "B",      # flake8-bugbear
+  "BLE",    # flake8-blind-except
+  "C4",     # flake8-comprehensions
+  "UP",     # pyupgrade (enforces modern syntax)
+  "G",      # flake8-logging-format
+  "RUF",    # Ruff-specific rules
+  "SIM",    # flake8-simplify
+]
+ignore = [
+    "G004",   # Allow f-strings in logging calls
+    "RUF001", # Allow ambiguous unicode characters (e.g. '›' CLI prompts)
+]
+
+[tool.ruff.lint.isort]
+combine-as-imports = true
+known-first-party = ["ollama_usage"]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401", "F403", "C408"]
+"dashboard.py" = ["E501"]  # Ignore line length in HTML/CSS block templates
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true

@@ -26,7 +26,7 @@ jobs:
           python-version: "3.12"
 
       - name: Sync dependencies
-        run: uv sync
+        run: uv sync --all-groups
 
       - name: Run Ruff linter
         run: uv run ruff check .
@@ -49,7 +49,7 @@ jobs:
           python-version: "3.12"
 
       - name: Sync dependencies
-        run: uv sync
+        run: uv sync --all-groups
 
       - name: Run mypy
         run: uv run mypy src/
@@ -74,13 +74,13 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Sync dependencies
-        run: uv sync
+        run: uv sync --all-groups
 
       - name: Run tests with coverage
         run: uv run pytest --cov=src --cov-report=xml --cov-report=term-missing
 
       - name: Upload coverage report
-        uses: actions/upload-artifact@b4b15b349d6022cbebd750739e5b4fddb088b75a # v4.4.3
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.1
         if: matrix.python-version == '3.12'
         with:
           name: coverage-report
@@ -97,10 +97,9 @@ jobs:
     steps:
       - name: Check all jobs passed
         run: |
-          if [[ "${{ needs.lint.result }}" != "success" || \
-                "${{ needs.typecheck.result }}" != "success" || \
-                "${{ needs.test.result }}" != "success" ]]; then
-            echo "One or more CI jobs failed."
+          RESULTS='${{ toJson(needs.*.result) }}'
+          if echo "$RESULTS" | grep -qE 'failure|cancelled|skipped'; then
+            echo "One or more required CI jobs did not succeed."
             exit 1
           fi
-          echo "All CI jobs passed."
+          echo "All required CI jobs completed successfully."

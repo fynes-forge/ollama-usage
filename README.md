@@ -54,6 +54,22 @@ touch any other project's dependencies. Swap `uv tool install` for
 `pip install` if you'd rather it land in your current environment.
 Check the release's `SHA256SUMS.txt` if you want to verify the download.
 
+## Development
+ 
+Common dev commands are wrapped in a `Makefile` — run `make help` to
+list them:
+ 
+```bash
+make sync       # install everything, runtime + dev deps
+make check      # lint, format-check, typecheck, test — same as CI
+make test-cov   # tests with a coverage report
+make dashboard
+make proxy
+```
+ 
+These are just short aliases for the equivalent `uv run ...` commands
+shown throughout this README — use whichever you prefer.
+
 ## Use
 
 **Log a call and check it against your context budget:**
@@ -156,7 +172,13 @@ check_context_budget(resp["prompt_eval_count"], num_ctx=32768)
 │   └── copilot/            ← GitHub Copilot instructions
 ├── docs/                   ← Documentation
 src/ollama_usage/
-    ├── logger.py      # call_and_log(), build_entry(), append_entry()
+    |
+    ├── config/
+        ├── __init__.py
+        ├── branding.py    # shared brand colour tokens
+        └── config.py      # load_config() — read env vars into a dict
+    ├── __init__.py
+    ├── logger.py      # call_and_log() — call Ollama, append usage to JSONL
     ├── budget.py      # check_context_budget() — warn before context overflow
     ├── proxy.py       # transparent proxy — captures Cline/other direct clients
     ├── report.py      # summary() and plot() — query the log with DuckDB
@@ -168,7 +190,6 @@ src/ollama_usage/
 ├── CHANGELOG.md            ← Release history
 └── README.md               ← This file
 ```
-
 ---
 
 ## Contributing
