@@ -164,7 +164,7 @@ check_context_budget(resp["prompt_eval_count"], num_ctx=32768)
 ## Project Structure
 
 ```
-<repo-name>/
+ollama-usage/
 ├── .github/
 │   ├── workflows/          ← CI/CD pipelines
 │   ├── ISSUE_TEMPLATE/     ← Bug reports, feature requests
