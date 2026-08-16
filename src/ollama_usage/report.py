@@ -22,9 +22,7 @@ def summary(log_path: Path = DEFAULT_LOG_PATH) -> duckdb.DuckDBPyRelation:
     """)
 
 
-def plot_report(
-    log_path: Path = DEFAULT_LOG_PATH, show: bool = True
-) -> Any:
+def plot_report(log_path: Path = DEFAULT_LOG_PATH, show: bool = True) -> Any:
     """Plot tokens-per-second over time, to spot thermal throttling."""
     import matplotlib.pyplot as plt
 
@@ -34,9 +32,7 @@ def plot_report(
         ORDER BY ts
     """).df()
 
-    ax = df.plot(
-        x="ts", y="tokens_per_second", title="Generation speed over time"
-    )
+    ax = df.plot(x="ts", y="tokens_per_second", title="Generation speed over time")
     ax.set_xlabel("Time")
     ax.set_ylabel("Tokens / second")
     if show:

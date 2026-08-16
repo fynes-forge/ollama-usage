@@ -29,9 +29,7 @@ def build_entry(
     }
 
 
-def append_entry(
-    entry: dict[str, Any], log_path: Path = DEFAULT_LOG_PATH
-) -> None:
+def append_entry(entry: dict[str, Any], log_path: Path = DEFAULT_LOG_PATH) -> None:
     """Append one log entry as a line of JSON."""
     log_path.parent.mkdir(parents=True, exist_ok=True)
     with log_path.open("a") as f:
