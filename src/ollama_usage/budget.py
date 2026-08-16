@@ -1,11 +1,3 @@
-"""Warn before a prompt collides with the model's context window.
-
-Ollama does not raise an error when a request exceeds num_ctx — it
-silently drops the oldest tokens. For an agentic tool like Cline, that
-shows up as the model "forgetting" the task rather than failing loudly.
-This module exists to catch that before it happens.
-"""
-
 from __future__ import annotations
 
 DEFAULT_NUM_CTX = 32768  # match whatever num_ctx your Modelfile sets

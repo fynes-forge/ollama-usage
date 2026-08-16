@@ -1,5 +1,3 @@
-"""ollama-usage: log, budget, and visualise token usage for local Ollama models."""
-
 from importlib.metadata import PackageNotFoundError, version
 
 try:

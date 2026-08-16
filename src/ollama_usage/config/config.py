@@ -1,9 +1,7 @@
-"""Configuration module."""
-
-from typing import Dict
+import os
 
 
-def load_config() -> Dict[str, str]:
+def load_config() -> dict[str, str]:
     """Load configuration from environment variables."""
     config = {}
     if "APP_ENV" in os.environ:

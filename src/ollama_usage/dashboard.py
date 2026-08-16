@@ -1,33 +1,13 @@
-"""Streamlit dashboard for ollama-usage, styled to the Fynes Forge brand.
-
-Run directly:
-    uv run streamlit run src/ollama_usage/dashboard.py
-
-Or via the CLI wrapper, which also binds it to 0.0.0.0 so other devices
-on your network can reach it:
-    uv run ollama-usage dashboard
-"""
-
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 import duckdb
-import pandas as pd
-import plotly.graph_objects as go
+import pandas as pd  # type: ignore
+import plotly.graph_objects as go  # type: ignore
 import streamlit as st
 
-from ollama_usage.branding import (
-    BG,
-    BG_DEEP,
-    CYAN,
-    DEEP_LAVENDER,
-    DEEP_PINK,
-    GOLD,
-    LAVENDER,
-    PINK,
-    STEEL_BLUE,
-)
+from ollama_usage.config import BrandColour
 from ollama_usage.logger import DEFAULT_LOG_PATH
 
 FONT_DISPLAY = "'Cinzel', serif"
@@ -36,10 +16,10 @@ FONT_MONO = "'JetBrains Mono', monospace"
 
 # Tag pill colours, cycled deterministically per tag name.
 _TAG_PALETTE = [
-    (f"rgba(221,117,150,0.18)", DEEP_PINK),   # t-pink
-    (f"rgba(99,197,234,0.12)", CYAN),          # t-cyan
-    (f"rgba(236,218,144,0.12)", GOLD),         # t-gold
-    (f"rgba(159,126,190,0.18)", DEEP_LAVENDER),  # t-lav
+    ("rgba(221,117,150,0.18)", BrandColour.DEEP_PINK.value),  # t-pink
+    ("rgba(99,197,234,0.12)", BrandColour.CYAN.value),  # t-cyan
+    ("rgba(236,218,144,0.12)", BrandColour.GOLD.value),  # t-gold
+    ("rgba(159,126,190,0.18)", BrandColour.DEEP_LAVENDER.value),  # t-lav
 ]
 
 # The Fynes Forge mark, straight from the brand pack — scaled down for the header.
@@ -77,13 +57,13 @@ def _inject_css() -> None:
         }}
 
         [data-testid="stAppViewContainer"] {{
-            background: {BG};
+            background: {BrandColour.BG.value};
         }}
         [data-testid="stHeader"] {{
             background: transparent;
         }}
         [data-testid="stSidebar"] {{
-            background: {BG_DEEP};
+            background: {BrandColour.BG_DEEP.value};
             border-right: 1px solid rgba(79,98,114,0.25);
         }}
         #MainMenu, footer {{ visibility: hidden; }}
@@ -91,7 +71,7 @@ def _inject_css() -> None:
         h1, h2, h3 {{
             font-family: {FONT_DISPLAY} !important;
             letter-spacing: 0.04em;
-            color: {LAVENDER} !important;
+            color: {BrandColour.LAVENDER.value} !important;
         }}
 
         /* ── Header bar ── */
@@ -109,14 +89,14 @@ def _inject_css() -> None:
             font-weight: 700;
             font-size: 20px;
             letter-spacing: 0.12em;
-            color: {LAVENDER};
+            color: {BrandColour.LAVENDER.value};
         }}
-        .ff-title span {{ color: {GOLD}; }}
+        .ff-title span {{ color: {BrandColour.GOLD.value}; }}
         .ff-badge {{
             font-family: {FONT_MONO};
             font-size: 10px;
             letter-spacing: 0.15em;
-            color: {GOLD};
+            color: {BrandColour.GOLD.value};
             border: 1px solid rgba(236,218,144,0.4);
             padding: 4px 12px 4px 10px;
             clip-path: polygon(6px 0%, 100% 0%, calc(100% - 6px) 100%, 0% 100%);
@@ -126,13 +106,13 @@ def _inject_css() -> None:
         }}
         .ff-dot {{
             width: 6px; height: 6px; border-radius: 50%;
-            background: {CYAN};
-            box-shadow: 0 0 6px {CYAN};
+            background: {BrandColour.CYAN.value};
+            box-shadow: 0 0 6px {BrandColour.CYAN.value};
         }}
         .ff-timestamp {{
             font-family: {FONT_MONO};
             font-size: 10px;
-            color: {STEEL_BLUE};
+            color: {BrandColour.STEEL_BLUE.value};
             letter-spacing: 0.1em;
         }}
 
@@ -142,7 +122,7 @@ def _inject_css() -> None:
             font-size: 10px;
             letter-spacing: 0.35em;
             text-transform: uppercase;
-            color: {STEEL_BLUE};
+            color: {BrandColour.STEEL_BLUE.value};
             display: flex;
             align-items: center;
             gap: 16px;
@@ -159,7 +139,7 @@ def _inject_css() -> None:
         .ff-kpi-row {{ display: flex; gap: 10px; }}
         .ff-kpi {{
             flex: 1;
-            background: {BG_DEEP};
+            background: {BrandColour.BG_DEEP.value};
             border-radius: 3px;
             padding: 20px 22px;
             border-left: 3px solid var(--accent);
@@ -169,7 +149,7 @@ def _inject_css() -> None:
             font-size: 9px;
             letter-spacing: 0.25em;
             text-transform: uppercase;
-            color: {STEEL_BLUE};
+            color: {BrandColour.STEEL_BLUE.value};
             margin-bottom: 10px;
         }}
         .ff-kpi-value {{
@@ -188,14 +168,14 @@ def _inject_css() -> None:
             font-size: 9px;
             letter-spacing: 0.2em;
             text-transform: uppercase;
-            color: {STEEL_BLUE};
+            color: {BrandColour.STEEL_BLUE.value};
             padding: 0 16px 10px 0;
             border-bottom: 1px solid rgba(79,98,114,0.35);
         }}
         .ff-table td {{
             padding: 12px 16px 12px 0;
             border-bottom: 1px solid rgba(79,98,114,0.15);
-            color: {LAVENDER};
+            color: {BrandColour.LAVENDER.value};
         }}
         .ff-tag-pill {{
             font-family: {FONT_BODY};
@@ -213,7 +193,7 @@ def _inject_css() -> None:
             border-top: 1px solid rgba(79,98,114,0.25);
             font-family: {FONT_MONO};
             font-size: 10px;
-            color: {STEEL_BLUE};
+            color: {BrandColour.STEEL_BLUE.value};
             letter-spacing: 0.12em;
         }}
         </style>
@@ -243,9 +223,9 @@ def _table_html(by_tag: pd.DataFrame) -> str:
         rows += f"""
             <tr>
                 <td><span class="ff-tag-pill" style="background:{bg}; color:{fg}">{tag}</span></td>
-                <td>{int(row['calls'])}</td>
-                <td>{int(row['total_tokens']):,}</td>
-                <td>{row['avg_tps']:.1f}</td>
+                <td>{int(row["calls"])}</td>
+                <td>{int(row["total_tokens"]):,}</td>
+                <td>{row["avg_tps"]:.1f}</td>
             </tr>
         """
     return _clean_html(f"""
@@ -260,16 +240,28 @@ def _table_html(by_tag: pd.DataFrame) -> str:
 
 def _themed_layout(fig: go.Figure, title: str) -> go.Figure:
     fig.update_layout(
-        title=dict(text=title, font=dict(
-            family=FONT_MONO, size=12, color=STEEL_BLUE)),
-        plot_bgcolor=BG_DEEP,
+        title={
+            "text": title,
+            "font": {
+                "family": FONT_MONO,
+                "size": 12,
+                "color": BrandColour.STEEL_BLUE.value,
+            },
+        },
+        plot_bgcolor=BrandColour.BG_DEEP.value,
         paper_bgcolor="rgba(0,0,0,0)",
-        font=dict(family=FONT_MONO, color=LAVENDER, size=11),
-        margin=dict(l=40, r=20, t=40, b=30),
-        xaxis=dict(gridcolor="rgba(79,98,114,0.15)",
-                   linecolor=STEEL_BLUE, zeroline=False),
-        yaxis=dict(gridcolor="rgba(79,98,114,0.15)",
-                   linecolor=STEEL_BLUE, zeroline=False),
+        font={"family": FONT_MONO, "color": BrandColour.LAVENDER.value, "size": 11},
+        margin={"l": 40, "r": 20, "t": 40, "b": 30},
+        xaxis={
+            "gridcolor": "rgba(79,98,114,0.15)",
+            "linecolor": BrandColour.STEEL_BLUE.value,
+            "zeroline": False,
+        },
+        yaxis={
+            "gridcolor": "rgba(79,98,114,0.15)",
+            "linecolor": BrandColour.STEEL_BLUE.value,
+            "zeroline": False,
+        },
         showlegend=False,
         height=320,
     )
@@ -283,8 +275,8 @@ def _tps_line_chart(df: pd.DataFrame) -> go.Figure:
             x=df["ts"],
             y=df["tokens_per_second"],
             mode="lines+markers",
-            line=dict(color=GOLD, width=2),
-            marker=dict(color=CYAN, size=5),
+            line={"color": BrandColour.GOLD.value, "width": 2},
+            marker={"color": BrandColour.CYAN.value, "size": 5},
             fill="tozeroy",
             fillcolor="rgba(236,218,144,0.08)",
         )
@@ -298,16 +290,19 @@ def _requests_bar_chart(per_day: pd.Series) -> go.Figure:
         go.Bar(
             x=per_day.index,
             y=per_day.values,
-            marker=dict(color=LAVENDER, line=dict(
-                color=DEEP_LAVENDER, width=1)),
+            marker={
+                "color": BrandColour.LAVENDER.value,
+                "line": {"color": BrandColour.DEEP_LAVENDER.value, "width": 1},
+            },
         )
     )
     return _themed_layout(fig, "REQUESTS PER DAY")
 
 
 def main() -> None:
-    st.set_page_config(page_title="Ollama Usage — Fynes Forge",
-                       page_icon="🔥", layout="wide")
+    st.set_page_config(
+        page_title="Ollama Usage — Fynes Forge", page_icon="🔥", layout="wide"
+    )
     _inject_css()
 
     st.markdown(
@@ -318,7 +313,7 @@ def main() -> None:
                     <div class="ff-title">FYNES FORGE <span>· OLLAMA USAGE</span></div>
                 </div>
                 <div style="display:flex; align-items:center; gap:16px;">
-                    <span class="ff-timestamp">LOADED {datetime.now().strftime('%H:%M:%S')}</span>
+                    <span class="ff-timestamp">LOADED {datetime.now(UTC).strftime("%H:%M:%S")}</span>
                     <span class="ff-badge"><span class="ff-dot"></span>LOCAL · NO CLOUD</span>
                 </div>
             </div>
@@ -328,13 +323,15 @@ def main() -> None:
 
     log_path = st.sidebar.text_input("Log file", str(DEFAULT_LOG_PATH))
     st.sidebar.caption(
-        "Reload the page after logging new calls — this reads the file fresh each run.")
+        "Reload the page after logging new calls — this reads the file fresh each run."
+    )
 
     try:
         df = duckdb.sql(f"SELECT * FROM read_json_auto('{log_path}')").df()
-    except Exception:
+    except (duckdb.Error, FileNotFoundError):
         st.warning(
-            f"No usage data found yet at `{log_path}`. Run `ollama-usage log` first.")
+            f"No usage data found yet at `{log_path}`. Run `ollama-usage log` first."
+        )
         st.stop()
 
     if df.empty:
@@ -345,46 +342,65 @@ def main() -> None:
     df["total_tokens"] = df["prompt_tokens"] + df["output_tokens"]
 
     # ── 01 Overview ──────────────────────────────────────────────────────
-    st.markdown('<div class="ff-section-label">01 — OVERVIEW</div>',
-                unsafe_allow_html=True)
-    cards = "".join([
-        _kpi_card("Total Requests", f"{len(df):,}", CYAN),
-        _kpi_card("Total Tokens", f"{int(df['total_tokens'].sum()):,}", GOLD),
-        _kpi_card("Avg Tokens/Sec",
-                  f"{df['tokens_per_second'].mean():.1f}", PINK),
-        _kpi_card("Distinct Tags", f"{df['tag'].nunique()}", DEEP_LAVENDER),
-    ])
+    st.markdown(
+        '<div class="ff-section-label">01 — OVERVIEW</div>', unsafe_allow_html=True
+    )
+    cards = "".join(
+        [
+            _kpi_card("Total Requests", f"{len(df):,}", BrandColour.CYAN.value),
+            _kpi_card(
+                "Total Tokens",
+                f"{int(df['total_tokens'].sum()):,}",
+                BrandColour.GOLD.value,
+            ),
+            _kpi_card(
+                "Avg Tokens/Sec",
+                f"{df['tokens_per_second'].mean():.1f}",
+                BrandColour.PINK.value,
+            ),
+            _kpi_card(
+                "Distinct Tags",
+                f"{df['tag'].nunique()}",
+                BrandColour.DEEP_LAVENDER.value,
+            ),
+        ]
+    )
     st.markdown(
         _clean_html(f'<div class="ff-kpi-row">{cards}</div>'),
         unsafe_allow_html=True,
     )
 
     # ── 02 Usage by tag ──────────────────────────────────────────────────
-    st.markdown('<div class="ff-section-label">02 — USAGE BY TAG</div>',
-                unsafe_allow_html=True)
+    st.markdown(
+        '<div class="ff-section-label">02 — USAGE BY TAG</div>', unsafe_allow_html=True
+    )
     by_tag = (
         df.groupby("tag")
-        .agg(calls=("tag", "count"), total_tokens=("total_tokens", "sum"), avg_tps=("tokens_per_second", "mean"))
+        .agg(
+            calls=("tag", "count"),
+            total_tokens=("total_tokens", "sum"),
+            avg_tps=("tokens_per_second", "mean"),
+        )
         .sort_values("total_tokens", ascending=False)
     )
     st.markdown(_table_html(by_tag), unsafe_allow_html=True)
 
     # ── 03 Charts ────────────────────────────────────────────────────────
-    st.markdown('<div class="ff-section-label">03 — OVER TIME</div>',
-                unsafe_allow_html=True)
+    st.markdown(
+        '<div class="ff-section-label">03 — OVER TIME</div>', unsafe_allow_html=True
+    )
     left, right = st.columns(2)
     with left:
-        st.plotly_chart(_tps_line_chart(
-            df), use_container_width=True, theme=None)
+        st.plotly_chart(_tps_line_chart(df), use_container_width=True, theme=None)
     with right:
         per_day = df.set_index("ts").resample("D").size()
-        st.plotly_chart(_requests_bar_chart(per_day),
-                        use_container_width=True, theme=None)
+        st.plotly_chart(
+            _requests_bar_chart(per_day), use_container_width=True, theme=None
+        )
 
     # ── 04 Raw log ───────────────────────────────────────────────────────
     with st.expander("04 — RAW LOG"):
-        st.dataframe(df.sort_values("ts", ascending=False),
-                     use_container_width=True)
+        st.dataframe(df.sort_values("ts", ascending=False), use_container_width=True)
 
     st.markdown(
         '<div class="ff-footer">ollama-usage · local, no cloud · fynesforge.dev</div>',

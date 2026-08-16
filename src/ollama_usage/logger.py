@@ -1,14 +1,3 @@
-"""Log token usage from local Ollama calls to a JSONL file.
-
-Every non-streamed response from Ollama's /api/generate already includes
-prompt/output token counts and durations — this module just makes sure
-that data lands somewhere instead of vanishing after each request.
-
-build_entry() and append_entry() are split out from call_and_log() so
-the proxy (proxy.py) can log usage from traffic it merely forwards,
-without having made the request itself.
-"""
-
 from __future__ import annotations
 
 import json
