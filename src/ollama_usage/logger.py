@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import requests
 
@@ -29,7 +29,9 @@ def build_entry(
     }
 
 
-def append_entry(entry: dict[str, Any], log_path: Path = DEFAULT_LOG_PATH) -> None:
+def append_entry(
+    entry: dict[str, Any], log_path: Path = DEFAULT_LOG_PATH
+) -> None:
     """Append one log entry as a line of JSON."""
     log_path.parent.mkdir(parents=True, exist_ok=True)
     with log_path.open("a") as f:
@@ -43,7 +45,7 @@ def call_and_log(
     log_path: Path = DEFAULT_LOG_PATH,
     ollama_url: str = DEFAULT_OLLAMA_URL,
 ) -> dict[str, Any]:
-    """Call Ollama directly, log the resulting token usage, and return the response.
+    """Call Ollama directly, log token usage, and return the response.
 
     This is for scripts that call Ollama themselves (the CLI's `log` command,
     a batch job, etc.). If you're using an agent like Cline that talks to
@@ -69,7 +71,7 @@ def call_and_log(
         timeout=300,
     )
     resp.raise_for_status()
-    data = resp.json()
+    data = cast(dict[str, Any], resp.json())
 
     entry = build_entry(data, tag=tag, timestamp=start)
     append_entry(entry, log_path)

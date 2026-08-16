@@ -80,7 +80,7 @@ jobs:
         run: uv run pytest --cov=src --cov-report=xml --cov-report=term-missing
 
       - name: Upload coverage report
-        uses: actions/upload-artifact@b4b15b349d6022cbebd750739e5b4fddb088b75a # v4.4.3
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.1
         if: matrix.python-version == '3.12'
         with:
           name: coverage-report

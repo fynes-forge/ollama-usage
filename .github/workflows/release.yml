@@ -70,7 +70,7 @@ jobs:
           
           # Check for CHANGELOG.md entry first as primary note if it exists
           VERSION_NUM="${{ steps.version.outputs.PKG_VERSION }}"
-          if [ -f CHANGELOG.md ]; path; then
+          if [ -f CHANGELOG.md ]; then
             CL_ENTRY=$(awk "/^## \[${VERSION_NUM}\]/{flag=1; next} /^## \[/{flag=0} flag" CHANGELOG.md)
             if [ -n "$CL_ENTRY" ]; then
               NOTES="${CL_ENTRY}\n\n### Commit History\n"
@@ -87,7 +87,7 @@ jobs:
 
           {
             echo "NOTES<<EOF"
-            echo -e "$NOTES"
+            printf '%b' "$NOTES"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
