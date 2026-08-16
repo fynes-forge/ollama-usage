@@ -106,7 +106,7 @@ jobs:
           sha256sum * > SHA256SUMS.txt
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@0704a9557d32b16f23b5957de341ea580416d89e # v2.2.1
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.VERSION }}
           name: ${{ steps.version.outputs.VERSION }}
