@@ -33,9 +33,9 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://fynes-forge.github.io"
-Repository = "https://github.com/fynes-forge/ollama_usage"
-Issues = "https://github.com/fynes-forge/ollama_usage/issues"
+Homepage = "https://fynesforge.dev"
+Repository = "https://github.com/fynes-forge/ollama-usage"
+Issues = "https://github.com/fynes-forge/ollama-usage/issues"
 Blog = "https://fynesforge.dev/blog"
 
 [project.scripts]
