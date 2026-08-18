@@ -4,7 +4,7 @@ build-backend = "uv_build"
 
 [project]
 name = "ollama-usage"
-version = "1.0.0"
+version = "1.0.1"
 license = "MIT"
 description = "Log, budget, and visualise token usage for local Ollama models."
 readme = "README.md"
